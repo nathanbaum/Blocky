@@ -2,7 +2,7 @@ var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
 
 var MOVE_SPEED = 7;
-var JUMP_SPEED = 23;
+var JUMP_SPEED = 18;
 var GRAVITY_MOD = 0.5;
 var FRICTION_MOD = 0.7;
 var AIR_RESISTANCE = 0.7;
@@ -57,8 +57,10 @@ function Character(width, height, pos) {
   };
 
   this.jump = function(){
-    this.pos[1] -= 10;
-    this.vel[1] = -1 * JUMP_SPEED;
+    if(map.checkPlatforms()){
+      this.pos[1] -= 10;
+      this.vel[1] = -1 * JUMP_SPEED;
+    }
   };
 
   this.move = function(right){ //moves the player right or left
@@ -171,18 +173,18 @@ function Platform(width, height, pos) {
 
       if(overlap[0] > overlap[1]){
         char.vel[1] = 0;
-        char.pos[1] -= overlap[1];
+        //char.pos[1] -= overlap[1] * .99;
       }
       else if(overlap[1] > overlap[0]){
         char.vel[0] = 0;
-        char.pos[0] -= overlap[0];
+        //char.pos[0] -= overlap[0] * .99;
       }
       else{
         char.vel[1] = 0;
-        char.pos[1] -= overlap[1];
+        //char.pos[1] -= overlap[1] * .99;
 
         char.vel[0] = 0;
-        char.pos[0] -= overlap[0];
+        //char.pos[0] -= overlap[0] * .99;
       }
     }
 
@@ -201,12 +203,12 @@ function Map(platforms) {
   this.map = new Array(platforms);
 
   this.generateMap = function(){
-    point = [0, canvas.height/2];
+    point = [-100, canvas.height/2];
     for(i = 0; i<this.map.length; i++){
       point[0] += PLATFORM_OFFSET[0];
       up = Math.random() > 0.5;
       if(up){
-        if(point[1] - PLATFORM_OFFSET[1] - PLAYER_HEIGHT > 0){
+        if(point[1] - PLATFORM_OFFSET[1] - PLAYER_HEIGHT * 2 > 0){
           point[1] -= PLATFORM_OFFSET[1];
           map[i] = new Platform(PLATFORM_WIDTH, PLATFORM_HEIGHT, [point[0], point[1]]);
         }
@@ -227,6 +229,15 @@ function Map(platforms) {
       }
     }
     goalPoint = [point[0] += PLATFORM_OFFSET[0], canvas.height/2];
+  }
+
+  this.checkPlatforms = function(){
+    for(i = 0; i < this.map.length; i++){
+      if(map[i].onPlatform()){
+        return true;
+      }
+    }
+    return false;
   }
 
   this.render = function(){
