@@ -2,11 +2,12 @@ var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
 
 var MOVE_SPEED = 7;
-var GRAVITY_MOD = 0.35;
+var JUMP_SPEED = 23;
+var GRAVITY_MOD = 0.5;
 var FRICTION_MOD = 0.7;
-var AIR_RESISTANCE = 0.75;
+var AIR_RESISTANCE = 0.7;
 var DEATH_MESSAGE = "GAME OVER";
-var NUM_PLATFORMS = 10;
+var NUM_PLATFORMS = 6;
 var SCROLL_SPEED = 3;
 
 var PLAYER_WIDTH = 50;
@@ -15,7 +16,7 @@ var PLAYER_COLOR = '#000000';
 
 var PLATFORM_WIDTH = 6*PLAYER_WIDTH;
 var PLATFORM_HEIGHT = PLAYER_HEIGHT/2;
-var PLATFORM_OFFSET = [500, 300];
+var PLATFORM_OFFSET = [500, 200];
 var PLATFORM_COLOR = '#000000';
 
 var GOAL_WIDTH = 200;
@@ -56,12 +57,8 @@ function Character(width, height, pos) {
   };
 
   this.jump = function(){
-    if (!gravityInEffect) {
-      gravityInEffect = true;
-      this.pos[1] -= 10;
-      this.vel[1] = -1 * MOVE_SPEED;
-      this.vel[1] -= MOVE_SPEED;
-    }
+    this.pos[1] -= 10;
+    this.vel[1] = -1 * JUMP_SPEED;
   };
 
   this.move = function(right){ //moves the player right or left
@@ -84,13 +81,9 @@ function Character(width, height, pos) {
     this.pos[1] += this.vel[1];
 
     //movement from gravity
-    if (gravityInEffect) {
-      this.vel[1] += GRAVITY_MOD;
-      this.vel[0] *= AIR_RESISTANCE;
-    } else {
-      this.vel[1] = 0;
-      this.vel[0] *= FRICTION_MOD;
-    }
+    this.vel[1] += GRAVITY_MOD;
+    this.vel[0] *= AIR_RESISTANCE;
+    this.vel[0] *= FRICTION_MOD;
 
     if(this.pos[0] <= 0 || this.pos[1] + this.height >= canvas.height){ //checks if player is off the screen
       play = false;
@@ -159,9 +152,38 @@ function Platform(width, height, pos) {
       this.enemy.movement *= -1; //reverses the enemy's movement
     }
 
-    if(this.onPlatform() && gravityInEffect){
-      gravityInEffect = false;
-      char.pos[1] = this.pos[1] - (char.height + 10);
+    if(this.onPlatform()){
+      var overlap = new Array(2);
+
+      if(char.vel[0] > 0){
+        overlap[0] = (char.pos[0] + char.width) - this.pos[0];
+      }
+      else{
+        overlap[0] = char.pos[0] - (this.pos[0] + this.width);
+      }
+
+      if(char.vel[1] > 0){
+        overlap[1] = (char.pos[1] + char.height) - this.pos[1];
+      }
+      else{
+        overlap[1] = char.pos[1] - (this.pos[1] + this.height);
+      }
+
+      if(overlap[0] > overlap[1]){
+        char.vel[1] = 0;
+        char.pos[1] -= overlap[1];
+      }
+      else if(overlap[1] > overlap[0]){
+        char.vel[0] = 0;
+        char.pos[0] -= overlap[0];
+      }
+      else{
+        char.vel[1] = 0;
+        char.pos[1] -= overlap[1];
+
+        char.vel[0] = 0;
+        char.pos[0] -= overlap[0];
+      }
     }
 
     this.pos[0] -= SCROLL_SPEED;
@@ -205,15 +227,6 @@ function Map(platforms) {
       }
     }
     goalPoint = [point[0] += PLATFORM_OFFSET[0], canvas.height/2];
-  }
-
-  this.checkPlatforms = function(){
-    for(i = 0; i < this.map.length; i++){
-      if(map[i].onPlatform()){
-        return true;
-      }
-    }
-    return false;
   }
 
   this.render = function(){
